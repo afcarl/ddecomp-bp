@@ -1,0 +1,121 @@
+#+title: Dual decomposition and loopy belief propagation for MAP inference in factor graphs
+#+tags: ddecomp dualdecomp
+
+Author: Tim Vieira (@timvieira)
+
+#+LaTex_HEADER: \newcommand{\m}[2]{\mu_{#1 \rightarrow #2}}
+#+LaTex_HEADER: \newcommand{\I}[1]{\textbf{1}\left[ #1 \right]}
+#+LaTex_HEADER: \newcommand{\x}{{\bf x}}
+
+* Problem definition
+
+Our goal is to find the highest-scoring assignment to variables in a factor
+graph. Here we assume the factor graph is actually a sum, which corresponds to
+the equivalent problem of maximizing the log product, assuming all factors are
+strictly positive.$\footnote{I will abuse terminology and call these "factors",
+but they are technically "terms".}$
+
+More formally, we have the following maximization problem:
+
+\[
+    \x^{*} = \argmax_{\x} \sum_{\alpha \in \mathcal{F}} f_{\alpha}(\x_\alpha)
+\]
+
+- $\mathcal{F}$: collections of labeled subsets of variables. Labeling allows
+  the same subset to appear more than once.
+
+- $f_{\alpha}$: function associated with a labeled subset $\alpha$ in
+  $\mathcal{F}$.
+
+- $\x_\alpha$: subset of variables labeled $\alpha$. This subset of variables
+  are the arguments to the function $f_{\alpha}$.
+
+- By convention, greek letters (\alpha and \beta) will be used to indicate a
+  labeled subset of variables. To identify a single variable we'll used lower
+  case letters ($i$ and $j$). In addition, We'll also use boldface to indicate a
+  set of variables (e.g., $\x_\alpha$) as opposed to a single variable
+  (e.g. $x_j$).
+
+* Loopy belief propagation
+
+BP uses the following update equations to solve for two types of messages
+$\m{i}{\alpha}$ and $\m{\alpha}{i}$.
+
+- Solve (local) maximization subproblem for each $\alpha \in \mathcal{F}$:
+  \[
+     \m{\alpha}{i}(x_i)
+        &=& \max_{\x_{\alpha}: (\x_{\alpha})_i = x_i} f_\alpha(\x_\alpha) + \sum_{j \in \alpha; j \ne i} \m{i}{\alpha}((\x_{\alpha})_j)
+  \]
+
+- Variable messages: try to bring solutions from different subproblem into
+  agreement. By computing a penalty which will be used when we resolve
+  subproblems.
+
+  \begin{eqnarray}
+    \m{i}{\alpha}(x_i)
+        &=& \sum_{\beta \in \mathcal{F}: i \in \beta; \beta \ne \alpha} \m{\beta}{i}(x_i)  \\
+        &=& \left( \sum_{\beta \in \mathcal{F}: i \in \beta} \m{\beta}{i}(x_i) \right) - \m{\alpha}{i}(x_i)
+  \end{eqnarray}
+
+  NOTE: Eqn \ref{xxx} makes use of a limited form of subtraction. As
+  indicated by Eqn \ref{bp:v2f1}, any semiring can support this type of
+  subtraction if it maintains some sort of provenance. TODO: talk to wes about
+  what this is called -- we like it in Dyna, especially for retraction.
+
+* Dual decomposition
+
+- Solving subproblems:
+
+  \begin{eqnarray}
+     z_\alpha
+        &=& {\text arg}\max_{\x_{\alpha}} f_\alpha(\x_\alpha) + \sum_{i \in \alpha} \m{i}{\alpha}((\x_{\alpha})_j) \\
+    \m{\alpha}{i}(x_i) &=& \textbf{1}[(z_\alpha)_i = x_i] \label{features-special-case}
+  \end{eqnarray}
+
+  More generally, factors tell variables the "features" they'd like them to
+  have. The indicator function in Eqn \ref{features-special-case}, is simply a
+  special case of such features, which says "Does this variable have this value
+  in the best local assignment?".
+
+  Paul and Eisner (2012) exploit this flexibility while using dual decomposition
+  for approximate inference in a problem with string-valued random variables. In
+  this setting variable have infinitely-many values! Approximate inference with
+  Dual decomposition is possible because only features (e.g., n-grams) of
+  variable assignments are compared, not the infinitely-many strings. In their
+  case, messages are weighted finite state machines.
+
+  This type of first-order local equality is very similar to expectation
+  propagation algorithms for exponential families, except that here only
+  features of the best local configuration are used instead of expected
+  features.
+
+- The subgradient step:
+  \[
+    \m{i}{\alpha}(x_i) = \m{i}{\alpha}(x_i) +
+        \eta_t \cdot \underbrace{\Big( \overbrace{\Big( 1/const \cdot \overbrace{\sum_{\beta \in \mathcal{F}: i \in \beta} \m{\beta}{i}(x_i)}^{b_i(x_i)} \Big) }^{\bf agreement} - \m{\alpha}{i}(x_i) \Big)}_{\texttt{ ignoring 1/const this is just }\m{i}{\alpha}(x_i)}
+  \]
+
+  Vannila max-product BP uses $\eta_t=1$, for all $t$.
+
+- The advatange of DD is that when it converges we get an exact solution.
+
+  Collins, Sontag, and other MIT folks got the inspiration for the EMNLP'11
+  paper from Smith and Eisner (2008) BPDP. They figured that they could solve
+  the same problem, but with optimality guarantees coming from the well-studied
+  world of linear programming.
+
+
+* TODO
+
+- Demonstrate convexity of dual in $\lambda$. Monitoring primal-dual gap will
+  demonstrate a smoothly decreasing dual as we optimize $\lambda$. The primal,
+  on the other hand, is not convex, so it will bounce around as we march along
+  the optimization path.
+
+- Discuss issues (and strategies for dealing) with ties for the max.
+
+- Relation to: Weiss, Sapp, and Taskar. [[skid:'title:"Structured%20ensemble%20cascades"'][Structured ensemble cascades]]. NIPS 2011.
+
+- Other message passing algorithms for solving the MAP LP relaxation problem,
+  including Wainwright et al., 2005; Kolmogorov, 2006; Globerson &
+  Jaakkola, 2008.
