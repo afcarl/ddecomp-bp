@@ -57,10 +57,9 @@ $\m{i}{\alpha}$ and $\m{\alpha}{i}$.
         &=& \left( \sum_{\beta \in \mathcal{F}: i \in \beta} \m{\beta}{i}(x_i) \right) - \m{\alpha}{i}(x_i)
   \end{eqnarray}
 
-  NOTE: Eqn \ref{xxx} makes use of a limited form of subtraction. As
-  indicated by Eqn \ref{bp:v2f1}, any semiring can support this type of
-  subtraction if it maintains some sort of provenance. TODO: talk to wes about
-  what this is called -- we like it in Dyna, especially for retraction.
+  NOTE: Eqn \ref{bp:v2f1} makes use of a limited form of subtraction. Any
+  semiring can support this type of subtraction by re-folding over messages,
+  leaving out the message being subtracted.
 
 * Dual decomposition
 
